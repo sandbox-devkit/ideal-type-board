@@ -1,6 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Rnd } from "react-rnd";
-import { Upload, Trash2, Image as ImageIcon, Download } from "lucide-react";
+import { Upload, Trash2, Image as ImageIcon, Download, ChevronDown } from "lucide-react";
 import * as htmlToImage from "html-to-image";
 
 interface BoardImage {
@@ -13,30 +13,78 @@ interface BoardImage {
   zIndex: number;
 }
 
+const getImageDimensions = (url: string): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.src = url;
+  });
+};
+
 export default function App() {
   const [images, setImages] = useState<BoardImage[]>([]);
   const [maxZIndex, setMaxZIndex] = useState(1);
+  const [uploadMode, setUploadMode] = useState<'original' | 'square'>('original');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    const newImages: BoardImage[] = Array.from(files).map((file) => {
+    const newImagesPromises = Array.from(files).map(async (file) => {
       const url = URL.createObjectURL(file as File);
+      const { width, height } = await getImageDimensions(url);
+      
+      const maxSize = 250;
+      let finalWidth = 250;
+      let finalHeight = 250;
+      
+      if (uploadMode === 'original') {
+        if (width > height) {
+          finalWidth = maxSize;
+          finalHeight = (height / width) * maxSize;
+        } else {
+          finalHeight = maxSize;
+          finalWidth = (width / height) * maxSize;
+        }
+      }
+
       return {
         id: Math.random().toString(36).substring(2, 9),
         url,
         x: Math.random() * 100 + 50,
         y: Math.random() * 100 + 50,
-        width: 250,
-        height: 250,
-        zIndex: maxZIndex + 1,
+        width: finalWidth,
+        height: finalHeight,
+        zIndex: 0, // Will be assigned properly below
       };
     });
 
-    setImages((prev) => [...prev, ...newImages]);
-    setMaxZIndex((prev) => prev + 1);
+    const resolvedImages = await Promise.all(newImagesPromises);
+
+    setImages((prev) => {
+      const nextZIndex = maxZIndex + 1;
+      const newImages = resolvedImages.map((img, index) => ({
+        ...img,
+        zIndex: nextZIndex + index,
+      }));
+      setMaxZIndex(nextZIndex + resolvedImages.length - 1);
+      return [...prev, ...newImages];
+    });
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -101,6 +149,32 @@ export default function App() {
             onChange={handleFileUpload}
           />
           <div className="flex items-center gap-2">
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 bg-white border border-neutral-300 hover:bg-neutral-50 text-neutral-700 pl-4 pr-3 py-2 rounded-lg font-medium transition-colors shadow-sm cursor-pointer"
+              >
+                {uploadMode === 'original' ? '원본 비율 유지' : '정사각형 (1:1)'}
+                <ChevronDown className={`w-4 h-4 text-neutral-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isDropdownOpen && (
+                <div className="absolute top-full mt-2 right-0 w-40 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden z-50 py-1">
+                  <button
+                    onClick={() => { setUploadMode('original'); setIsDropdownOpen(false); }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 transition-colors ${uploadMode === 'original' ? 'text-indigo-600 bg-indigo-50/50 font-medium' : 'text-neutral-700'}`}
+                  >
+                    원본 비율 유지
+                  </button>
+                  <button
+                    onClick={() => { setUploadMode('square'); setIsDropdownOpen(false); }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 transition-colors ${uploadMode === 'square' ? 'text-indigo-600 bg-indigo-50/50 font-medium' : 'text-neutral-700'}`}
+                  >
+                    정사각형 (1:1)
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               onClick={handleSaveImage}
               className="flex items-center gap-2 bg-white border border-neutral-300 hover:bg-neutral-50 text-neutral-700 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm cursor-pointer"
