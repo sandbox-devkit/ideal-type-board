@@ -1,0 +1,5 @@
+{
+  "name": "Ideal Type Board",
+  "description": "A vision board to upload, move, and resize images on a white canvas.",
+  "requestFramePermissions": []
+}
