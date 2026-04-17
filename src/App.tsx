@@ -176,18 +176,18 @@ export default function App() {
               )}
             </div>
             <button
-              onClick={handleSaveImage}
-              className="flex items-center gap-2 bg-white border border-neutral-300 hover:bg-neutral-50 text-neutral-700 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              저장하기
-            </button>
-            <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm cursor-pointer"
+              className="flex items-center gap-2 bg-white border border-neutral-300 hover:bg-neutral-50 text-neutral-700 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm cursor-pointer"
             >
               <Upload className="w-4 h-4" />
               사진 업로드
+            </button>
+            <button
+              onClick={handleSaveImage}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              저장하기
             </button>
           </div>
         </div>
